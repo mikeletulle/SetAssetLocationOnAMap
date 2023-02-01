@@ -1,0 +1,169 @@
+<apex:page standardController="Asset" showHeader="false" extensions="assetLocation" applyHtmlTag="false" applyBodyTag="false">
+  <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <apex:slds />
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Simple Map</title>
+    <script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+    <apex:stylesheet value="{!URLFOR($Resource.SLDS2118,'SLDS2.11.8/styles/salesforce-lightning-design-system.min.css')}" />
+
+    <script type="text/javascript">
+      var __sfdcSessionId = '{!GETSESSIONID()}';
+    </script>
+    <script src="../../soap/ajax/51.0/connection.js" type="text/javascript"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=default"></script>
+    <style type="text/css">
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+
+      #map {
+        height: 100%;
+      }
+
+      /* Optional: Makes the sample page fill the window. */
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+    <script>
+      $(document).ready(function () {
+        console.log("ready!");
+      });
+      var state = { //state that you need when the callback is called
+        output: document.getElementById("map"),
+        startTime: new Date().getTime()
+      };
+
+      let map;
+      let marker;
+      let asset;
+      let cent;
+      let latToUse;
+      let longToUse;
+
+      function initMap() {
+        console.log('in init');
+        console.log('location= {!Asset.Name} {!Asset.Asset_Location__latitude__s} {!Asset.Asset_Location__longitude__s} {!Asset.AccountId}');
+        
+        if('{!Asset.Asset_Location__latitude__s}'!=''){
+            latToUse = '{!Asset.Asset_Location__latitude__s}';
+            longToUse = '{!Asset.Asset_Location__longitude__s}';
+        }else{
+          console.log('getting location from account {!lat} {!lng}');
+          latToUse = '{!lat}';
+          longToUse = '{!lng}';
+        }
+        cent = new google.maps.LatLng(parseFloat(latToUse), parseFloat(longToUse));
+      
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: cent,
+        zoom: 18,
+        mapTypeId: 'satellite',
+      });
+
+      // Create an info window to share between markers.
+      const infoWindow = new google.maps.InfoWindow();
+      // Create the markers.
+      const image =
+        "{!URLFor($Resource.dumpsterImage)}";
+      marker = new google.maps.Marker({
+        position: cent,
+        map,
+        title: '{!Asset.Name}',
+        icon: image,
+        draggable: true
+      });
+      marker.setMap(map);
+   
+      infoWindow.setContent(marker.getTitle());
+      infoWindow.open(map, marker);
+
+      google.maps.event.addListener(marker, 'dragend', function () {
+        $('#newEntry').show();
+      });
+     
+          } // end init map
+
+    /*  function saveLocation() {
+        //alert('save new locatation as ' + marker.getPosition());
+        var asset = new sforce.SObject("Asset");
+        asset.id = '{!$CurrentPage.parameters.Id}';
+        asset.Asset_Location__latitude__s = marker.getPosition().lat();
+        asset.Asset_Location__longitude__s = marker.getPosition().lng();
+        result = sforce.connection.update([asset]);
+          if (result[0].getBoolean("success")) {
+            console.log("asset with id " + result[0].id + " updated");
+          } else {
+            console.log("failed to update asset" + result[0]);
+          }
+          $('#newEntry').hide();
+          //top.location.href ='/partnercentral/s/asset/{!$CurrentPage.parameters.Id}';
+      }
+*/
+
+      function saveLocation(){
+      Visualforce.remoting.Manager.invokeAction(
+                '{!$RemoteAction.assetLocation.saveLocation}', '{!$CurrentPage.parameters.Id}',marker.getPosition().lat(),marker.getPosition().lng(),
+                function (result, event) {
+                  $('#newEntry').hide();
+                    if (event.status) {
+                        console.log(result);
+                        if(result==true){
+                         
+                        top.location.href ='/partnercentral/s/asset/{!$CurrentPage.parameters.Id}';
+                        }
+                       
+                    } else {
+                    console.log(event.message);
+                    $('#newEntry').hide();
+                }
+                }, { escape: true }); 
+        }
+
+
+
+    </script>
+  </head>
+  <body>
+    <div id="map"></div>
+    <!-- Async script executes immediately and must be after any DOM elements used in callback. -->
+    <!-- You need a Google developer account and a maps api key for this next url -->
+    <script async="true" src="https://maps.googleapis.com/maps/api/js?key=<YOURGOOGLEMAPSAPIKEYHERE>&callback=initMap&libraries=&v=weekly"></script>
+   <!-- <button class="slds-button slds-button_brand" style="z-index:100; position: absolute;top: 10px;right: 10px;" onclick="top.location.href ='/apex/AssetLocation?id={!Asset.Id}';">Full Screen</button>-->
+
+    <section id='newEntry' role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1"
+      class="slds-modal slds-fade-in-open" style="display:none">
+      <div class="slds-modal__container">
+        <header class="slds-modal__header">
+          <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close" onclick="$('#newEntry').hide();$('#backdrop2').hide();"
+            Style="position:relative;top:-10vh;left:26vw">
+            <svg class="slds-button__icon slds-button__icon_large" aria-hidden="true">
+              <use xlink:href='{!URLFOR($Resource.SLDS2118,"/SLDS2.11.8/icons/utility-sprite/svg/symbols.svg#close")}' data-reactid="2328">
+              </use>
+            </svg>
+            <span class="slds-assistive-text">Close</span>
+          </button>
+          <h2 id="modal-heading-01" class="slds-modal__title slds-hyphenate">Location Change</h2>
+        </header>
+        <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+          <p>
+            Save this new location?
+          </p>
+        </div>
+        <footer class="slds-modal__footer">
+          <button class="slds-button slds-button_neutral" onclick="$('#newEntry').hide();$('#backdrop2').hide();">No</button>
+          <button class="slds-button slds-button_brand" onclick="saveLocation();">Yes</button>
+        </footer>
+      </div>
+    </section>
+
+
+  </body>
+
+  </html>
+</apex:page>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>My_Assets_Comm</fullName>
+    <columns>ASSET.NAME</columns>
+    <columns>ASSET.SERIAL_NUMBER</columns>
+    <columns>ASSET.INSTALL_DATE</columns>
+    <columns>ASSET.STATUS</columns>
+    <columns>Warranty_Indicator__c</columns>
+    <filterScope>Everything</filterScope>
+    <filters>
+        <field>Current_Users_Asset__c</field>
+        <operation>equals</operation>
+        <value>1</value>
+    </filters>
+    <filters>
+        <field>ASSET.STATUS</field>
+        <operation>equals</operation>
+        <value>Purchased,Shipped,Installed,Registered</value>
+    </filters>
+    <label>My Registered Products</label>
+</ListView>
